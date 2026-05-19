@@ -1,0 +1,290 @@
+{
+  "name": "Veille IA Automatique v8 — Final",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "5a8ba126-9d61-40d9-94c1-f731c2ea835d",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [1744, 288]
+    },
+    {
+      "parameters": {
+        "url": "https://huggingface.co/blog/feed.xml",
+        "options": {}
+      },
+      "id": "5637ef88-6578-4ea2-830c-b0f0b5a159eb",
+      "name": "RSS - Hugging Face",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [1984, -16]
+    },
+    {
+      "parameters": {
+        "url": "https://venturebeat.com/category/ai/feed/",
+        "options": {}
+      },
+      "id": "2e98f07f-2dbd-4b9b-9265-8661862aae04",
+      "name": "RSS - VentureBeat AI",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [1984, 144]
+    },
+    {
+      "parameters": {
+        "url": "https://openai.com/news/rss.xml",
+        "options": {}
+      },
+      "id": "6636394c-fccc-4914-b591-aabc4c1e17f6",
+      "name": "RSS - OpenAI",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [1984, 304]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/taobojlen/anthropic-rss-feed/main/anthropic_news_rss.xml",
+        "options": {}
+      },
+      "id": "683108ac-964f-4a56-bf10-ce65afeac016",
+      "name": "RSS - Anthropic",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [1984, 464]
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_google_ai.xml",
+        "options": {}
+      },
+      "id": "539b1c13-e2fe-4926-ae54-29b0208889e5",
+      "name": "RSS - Google DeepMind",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [1984, 624]
+    },
+    {
+      "parameters": {},
+      "id": "7aa27b23-9534-4274-ae50-da263470c81f",
+      "name": "Merge 1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [2272, 64]
+    },
+    {
+      "parameters": {},
+      "id": "90502203-b479-41fc-b8c0-169af975084b",
+      "name": "Merge 2",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [2272, 384]
+    },
+    {
+      "parameters": {},
+      "id": "ebca1f54-4c37-4d4b-9c62-5d00e6b5cc9d",
+      "name": "Merge Final",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [2528, 224]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "date-filter",
+              "leftValue": "={{ new Date($json.isoDate).getTime() }}",
+              "rightValue": "={{ $now.minus(1, 'days').toMillis() }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f8323807-af79-47ee-847f-3505a70ab80d",
+      "name": "Filtre Date 24h",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [2768, 224]
+    },
+    {
+      "parameters": {
+        "maxItems": 15
+      },
+      "id": "442b0b5f-3041-4f9a-9376-23ff103d9997",
+      "name": "Limit 15 articles",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [3008, 224]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "articles",
+        "options": {}
+      },
+      "id": "b29e81c9-c671-4072-8db8-00f08ff5acfc",
+      "name": "Aggregate",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [3248, 224]
+    },
+    {
+      "parameters": {
+        "jsCode": "const articles = $input.first().json.articles;\n\nconst lignes = articles.map((a, i) => {\n  const titre = (a.title || '')\n    .replace(/[^\\x20-\\x7E]/g, '')\n    .replace(/[\"\\\\]/g, '')\n    .replace(/:/g, '-')\n    .substring(0, 70)\n    .trim();\n  const lien = (a.link || '').trim();\n  return (i + 1) + '. ' + titre + ' >>> ' + lien;\n});\n\nconst texte = lignes.join(' ||| ');\n\nreturn [{ json: { texte, count: articles.length } }];"
+      },
+      "id": "3fe9c6eb-b6e8-4253-b8a1-b005d83d1a4b",
+      "name": "Prepare Texte",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3488, 224]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer VOTRE_CLE_API_OPENROUTER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://n8n.io"
+            },
+            {
+              "name": "X-Title",
+              "value": "Veille IA N8N"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"model\":\"z-ai/glm-4.5-air:free\",\"max_tokens\":1500,\"temperature\":0.7,\"messages\":[{\"role\":\"system\",\"content\":\"Tu es un expert IA. Reponds uniquement en francais. Pas de reflexion. Directement le resume.\"},{\"role\":\"user\",\"content\":\"Resume TOUS ces {{ $json.count }} articles en francais. Chaque article doit avoir - son titre en gras - 2 phrases de resume - son lien cliquable. Groupe par theme avec emojis. Termine par 3 points cles. Ne tronque pas. Articles: {{ $json.texte }}\"}]}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "32d8f9a1-857c-4b04-aac1-de5b0faf43ee",
+      "name": "OpenRouter - Resume IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3728, 224]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\nlet resume = '';\n\nif (response.choices && response.choices[0] && response.choices[0].message) {\n  resume = response.choices[0].message.content || '';\n} else if (response.content) {\n  resume = response.content;\n} else {\n  resume = JSON.stringify(response);\n}\n\nresume = resume\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\\n/g, '<br>');\n\nreturn [{ json: { resume } }];"
+      },
+      "id": "b615f7bd-4356-4c40-b366-c6ba2609d93f",
+      "name": "Extrait Resume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3968, 224]
+    },
+    {
+      "parameters": {
+        "sendTo": "VOTRE_EMAIL@exemple.com",
+        "subject": "=🤖 Veille IA — {{ $now.toFormat('dd/MM/yyyy') }}",
+        "message": "=<div style=\"font-family:Arial,sans-serif;max-width:660px;margin:0 auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden\">\n\n  <div style=\"background:#1a1a2e;padding:24px 28px\">\n    <h1 style=\"color:#ffffff;margin:0;font-size:20px\">🤖 Veille IA — Résumé du {{ $now.toFormat('dd/MM/yyyy') }}</h1>\n    <p style=\"color:#a0aec0;margin:8px 0 0;font-size:13px\">Sources : HuggingFace · VentureBeat · OpenAI · Anthropic · Google DeepMind</p>\n  </div>\n\n  <div style=\"background:#ffffff;padding:24px 28px\">\n    <div style=\"color:#2d3748;font-size:14px;line-height:1.9\">{{ $json.resume }}</div>\n  </div>\n\n  <div style=\"background:#f7fafc;padding:14px 28px;text-align:center;border-top:1px solid #e2e8f0\">\n    <p style=\"color:#a0aec0;font-size:11px;margin:0\">Veille IA automatique 🆓</p>\n  </div>\n\n</div>",
+        "options": {}
+      },
+      "id": "5c44e20e-2872-4d73-a7b6-5c0775f3d489",
+      "name": "Envoyer Email Digest",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [4208, 224],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VOTRE_CREDENTIAL_ID",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[
+        { "node": "RSS - Hugging Face", "type": "main", "index": 0 },
+        { "node": "RSS - VentureBeat AI", "type": "main", "index": 0 },
+        { "node": "RSS - OpenAI", "type": "main", "index": 0 },
+        { "node": "RSS - Anthropic", "type": "main", "index": 0 },
+        { "node": "RSS - Google DeepMind", "type": "main", "index": 0 }
+      ]]
+    },
+    "RSS - Hugging Face": {
+      "main": [[{ "node": "Merge 1", "type": "main", "index": 0 }]]
+    },
+    "RSS - VentureBeat AI": {
+      "main": [[{ "node": "Merge 1", "type": "main", "index": 1 }]]
+    },
+    "RSS - OpenAI": {
+      "main": [[{ "node": "Merge 2", "type": "main", "index": 0 }]]
+    },
+    "RSS - Anthropic": {
+      "main": [[{ "node": "Merge 2", "type": "main", "index": 1 }]]
+    },
+    "RSS - Google DeepMind": {
+      "main": [[{ "node": "Merge Final", "type": "main", "index": 1 }]]
+    },
+    "Merge 1": {
+      "main": [[{ "node": "Merge Final", "type": "main", "index": 0 }]]
+    },
+    "Merge 2": {
+      "main": [[{ "node": "Merge Final", "type": "main", "index": 1 }]]
+    },
+    "Merge Final": {
+      "main": [[{ "node": "Filtre Date 24h", "type": "main", "index": 0 }]]
+    },
+    "Filtre Date 24h": {
+      "main": [[{ "node": "Limit 15 articles", "type": "main", "index": 0 }]]
+    },
+    "Limit 15 articles": {
+      "main": [[{ "node": "Aggregate", "type": "main", "index": 0 }]]
+    },
+    "Aggregate": {
+      "main": [[{ "node": "Prepare Texte", "type": "main", "index": 0 }]]
+    },
+    "Prepare Texte": {
+      "main": [[{ "node": "OpenRouter - Resume IA", "type": "main", "index": 0 }]]
+    },
+    "OpenRouter - Resume IA": {
+      "main": [[{ "node": "Extrait Resume", "type": "main", "index": 0 }]]
+    },
+    "Extrait Resume": {
+      "main": [[{ "node": "Envoyer Email Digest", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
